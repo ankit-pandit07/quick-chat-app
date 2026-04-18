@@ -43,16 +43,6 @@ export function setupSocket(io: Server) {
                 const senderName = data.sender?.name || data.sender_name || socket.username || "Anonymous";
                 const senderId = data.sender?.id || data.sender_id || null;
 
-                const payloadData: any = {
-                    content: content,
-                    file_url: data.file_url || null,
-                    chat_group: { connect: { id: roomId } }
-                };
-
-                if (senderId) {
-                    payloadData.sender = { connect: { id: Number(senderId) } };
-                }
-
                 // Construct fallback broadcast payload upfront
                 let broadcastData: any = {
                     id: `temp_db_${Date.now()}`,
@@ -69,17 +59,22 @@ export function setupSocket(io: Server) {
                 try {
                     // Save the message to the database
                     const savedMessage = await prisma.message.create({
-                        data: payloadData,
+                        data: {
+                            content: content,
+                            file_url: data.file_url || null,
+                            group_id: roomId,
+                            sender_id: senderId ? Number(senderId) : null
+                        },
                         include: {
                             sender: {
                                 select: { id: true, name: true, image: true }
                             }
                         }
                     });
-                    console.log("MESSAGE SAVED");
+                    console.log("MESSAGE SAVED", savedMessage?.id);
                     broadcastData = { ...savedMessage, temp_id: data.temp_id, sender_name: senderName };
                 } catch (dbErr) {
-                    console.error("Error saving message in DB (falling back to emit only):", dbErr);
+                    console.error("Error saving message in DB:", dbErr);
                 }
 
                 io.to(roomId).emit("receive-message", broadcastData);

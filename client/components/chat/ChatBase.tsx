@@ -10,6 +10,8 @@ import { ArrowLeft, Users } from "lucide-react"
 import { MessageType, ChatGroupType } from "@/types"
 import JoinRoomModal from "./JoinRoomModal"
 import { API_URL } from "@/lib/apiEndPoints"
+import ChatHeader from "./ChatHeader"
+import UserAvatar from "./UserAvatar"
 
 export default function ChatBase({ groupId, oldMessages, user, group }: { groupId: string, oldMessages: MessageType[], user: CustomUser | null, group: ChatGroupType | null }) {
     const [messages, setMessages] = useState<MessageType[]>(oldMessages);
@@ -173,25 +175,13 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
     const currentUserName = user?.name || anonSession?.name || "Anonymous";
 
     return (
-        <div className="flex flex-col flex-1 bg-background overflow-hidden w-full max-w-6xl mx-auto border-x shadow-sm relative">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-card z-10 relative">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard" className="p-2 hover:bg-muted rounded-full transition-colors">
-                        <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-                    </Link>
-                    <div>
-                        <h2 className="font-semibold text-lg flex items-center gap-2">
-                            {group?.title || "Chat Room"}
-                            <span className="text-xs font-normal px-2 py-1 bg-green-100 text-green-700 rounded-full">{onlineUsersCount} online</span>
-                        </h2>
-                        <p className="text-xs text-muted-foreground">Passcode: {group?.passcode || "***"}</p>
-                    </div>
-                </div>
-                <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 hover:bg-muted rounded-full md:hidden">
-                    <Users className="w-5 h-5 text-muted-foreground" />
-                </button>
-            </div>
+        <div className="flex flex-col flex-1 bg-background overflow-hidden w-full h-full relative border border-border/50 md:shadow-2xl md:rounded-2xl md:max-h-[92vh] md:my-6 md:mx-auto max-w-[1400px]">
+            <ChatHeader 
+                group={group} 
+                onlineUsersCount={onlineUsersCount} 
+                onSidebarToggle={() => setShowSidebar(!showSidebar)} 
+                showSidebar={showSidebar} 
+            />
 
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Main Chat Area */}
@@ -217,20 +207,29 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
                 </div>
 
                 {/* Active Users Sidebar */}
-                <div className={`absolute right-0 top-0 bottom-0 w-64 bg-card border-l transform transition-transform duration-200 ease-in-out z-20 md:relative md:transform-none ${showSidebar ? "translate-x-0" : "translate-x-full md:translate-x-0"}`}>
-                    <div className="p-4 border-b flex justify-between items-center">
-                        <h3 className="font-semibold text-sm flex items-center gap-2"><Users className="w-4 h-4"/> Active Users</h3>
-                        <button onClick={() => setShowSidebar(false)} className="md:hidden text-muted-foreground hover:text-foreground">✕</button>
+                <div className={`absolute right-0 top-0 bottom-0 w-72 bg-card border-l border-border transform transition-transform duration-300 ease-out z-20 md:relative md:transform-none ${showSidebar ? "translate-x-0 shadow-2xl" : "translate-x-full md:translate-x-0 md:shadow-none"}`}>
+                    <div className="p-4 border-b border-border flex justify-between items-center bg-muted/10">
+                        <h3 className="font-semibold text-sm flex items-center gap-2 text-foreground">
+                            <Users className="w-4 h-4 text-primary"/> 
+                            Group Participants
+                        </h3>
+                        <button onClick={() => setShowSidebar(false)} className="md:hidden p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">✕</button>
                     </div>
-                    <div className="p-2 overflow-y-auto">
-                        <div className="flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span className="text-sm font-medium">{user?.name || anonSession?.name || "You"} (You)</span>
+                    <div className="p-3 overflow-y-auto h-full pb-20 flex flex-col gap-1">
+                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer group">
+                            <UserAvatar name={currentUserName} size="sm" isOnline={true} />
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{currentUserName} <span className="text-xs text-muted-foreground font-normal">(You)</span></span>
+                                <span className="text-[10px] text-green-500 font-medium">Online</span>
+                            </div>
                         </div>
                         {activeUsers.map((u, i) => (
-                            <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                <span className="text-sm truncate">{u.name || "User"}</span>
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer group">
+                                <UserAvatar name={u.name || "User"} size="sm" isOnline={true} />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate max-w-[150px]">{u.name || "User"}</span>
+                                    <span className="text-[10px] text-green-500 font-medium">Online</span>
+                                </div>
                             </div>
                         ))}
                     </div>
