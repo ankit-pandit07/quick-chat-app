@@ -62,8 +62,8 @@ export function setupSocket(io: Server) {
                         data: {
                             content: content,
                             file_url: data.file_url || null,
-                            group_id: roomId,
-                            sender_id: senderId ? Number(senderId) : null
+                            chat_group: { connect: { id: roomId } },
+                            ...(senderId && { sender: { connect: { id: Number(senderId) } } })
                         },
                         include: {
                             sender: {
