@@ -101,7 +101,62 @@ export function setupSocket(io: Server) {
             if (socket.room && roomUsers[socket.room]) {
                 roomUsers[socket.room] = roomUsers[socket.room].filter(u => u.id !== socket.id);
                 io.to(socket.room).emit("users-update", roomUsers[socket.room]);
+                // Notify call participants if the user disconnected
+                io.to(socket.room).emit("user-left-call", { peerId: socket.id });
             }
+        });
+
+        // WebRTC Signaling Events
+        socket.on("call-user", (data: { roomId: string, callerName: string, callType: string }) => {
+            console.log("CALL INITIATED:", data.callerName, "type:", data.callType, "in room", data.roomId);
+            socket.to(data.roomId).emit("incoming-call", { callerId: socket.id, callerName: data.callerName, callType: data.callType });
+        });
+
+        socket.on("user-busy", (data: { roomId: string, callerId: string }) => {
+            io.to(data.callerId).emit("user-busy", { peerId: socket.id });
+        });
+
+        socket.on("join-call", (data: { roomId: string }) => {
+            console.log("USER JOINED CALL:", socket.id);
+            socket.to(data.roomId).emit("user-joined-call", { peerId: socket.id, peerName: socket.username });
+        });
+
+        socket.on("reject-call", (data: { roomId: string }) => {
+            socket.to(data.roomId).emit("call-rejected", { peerId: socket.id });
+        });
+
+        socket.on("leave-call", (data: { roomId: string }) => {
+            socket.to(data.roomId).emit("user-left-call", { peerId: socket.id });
+        });
+
+        socket.on("end-call", (data: { roomId: string, target?: string }) => {
+            if (data.target) {
+                io.to(data.target).emit("end-call", { peerId: socket.id });
+            } else {
+                socket.to(data.roomId).emit("end-call", { peerId: socket.id });
+            }
+        });
+
+        socket.on("webrtc-offer", (data: { target: string, sdp: any }) => {
+            io.to(data.target).emit("webrtc-offer", {
+                caller: socket.id,
+                callerName: socket.username,
+                sdp: data.sdp
+            });
+        });
+
+        socket.on("webrtc-answer", (data: { target: string, sdp: any }) => {
+            io.to(data.target).emit("webrtc-answer", {
+                caller: socket.id,
+                sdp: data.sdp
+            });
+        });
+
+        socket.on("webrtc-ice-candidate", (data: { target: string, candidate: any }) => {
+            io.to(data.target).emit("webrtc-ice-candidate", {
+                caller: socket.id,
+                candidate: data.candidate
+            });
         });
     });
 }

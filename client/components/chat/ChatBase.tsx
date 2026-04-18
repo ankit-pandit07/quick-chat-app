@@ -1,7 +1,7 @@
 "use client"
 
 import { getSocket } from "@/lib/socket.config"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import ChatWindow from "./ChatWindow"
 import ChatInput from "./ChatInput"
 import { CustomUser } from "@/app/api/auth/[...nextauth]/options"
@@ -12,6 +12,8 @@ import JoinRoomModal from "./JoinRoomModal"
 import { API_URL } from "@/lib/apiEndPoints"
 import ChatHeader from "./ChatHeader"
 import UserAvatar from "./UserAvatar"
+import VideoCall from "./VideoCall"
+import { Video, Phone } from "lucide-react"
 
 export default function ChatBase({ groupId, oldMessages, user, group }: { groupId: string, oldMessages: MessageType[], user: CustomUser | null, group: ChatGroupType | null }) {
     const [messages, setMessages] = useState<MessageType[]>(oldMessages);
@@ -21,6 +23,15 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
     const [hasJoined, setHasJoined] = useState<boolean>(!!user);
     const [anonSession, setAnonSession] = useState<{id: number, name: string, groupId: string} | null>(null);
     const [showSidebar, setShowSidebar] = useState(false);
+    
+    // Call States
+    const [activeCallType, setActiveCallType] = useState<'none' | 'audio' | 'video'>('none');
+    const [incomingCall, setIncomingCall] = useState<{ callerId: string, callerName: string, callType: 'audio' | 'video' } | null>(null);
+    const isBusyRef = useRef(false);
+
+    useEffect(() => {
+        isBusyRef.current = activeCallType !== 'none';
+    }, [activeCallType]);
 
     let socket = useMemo(() => {
         const socket = getSocket();
@@ -103,6 +114,27 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
             setActiveUsers(users.filter(u => u.id !== socket.id)); // Keep 'You' separate
         });
 
+        socket.on("incoming-call", (data: { callerId: string, callerName: string, callType: 'audio' | 'video' }) => {
+            if (isBusyRef.current) {
+                socket.emit("user-busy", { roomId: groupId, callerId: data.callerId });
+            } else {
+                setIncomingCall(data);
+            }
+        });
+
+        socket.on("user-busy", () => {
+            alert("The user you are trying to call is currently busy.");
+            setActiveCallType('none');
+        });
+
+        socket.on("call-rejected", () => {
+            console.log("Call was rejected by a peer");
+        });
+
+        socket.on("end-call", () => {
+            setActiveCallType('none');
+        });
+
         return () => {
             socket.off("receive-message");
             socket.off("message_updated");
@@ -110,6 +142,10 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
             socket.off("typing");
             socket.off("stop_typing");
             socket.off("users-update");
+            socket.off("incoming-call");
+            socket.off("user-busy");
+            socket.off("call-rejected");
+            socket.off("end-call");
             socket.disconnect();
         };
     }, [socket, hasJoined, user, anonSession]);
@@ -181,7 +217,58 @@ export default function ChatBase({ groupId, oldMessages, user, group }: { groupI
                 onlineUsersCount={onlineUsersCount} 
                 onSidebarToggle={() => setShowSidebar(!showSidebar)} 
                 showSidebar={showSidebar} 
+                onStartCall={(type) => {
+                    socket.emit("call-user", { roomId: groupId, callerName: currentUserName, callType: type });
+                    setActiveCallType(type);
+                }}
             />
+
+            {/* Incoming Call Modal */}
+            {incomingCall && activeCallType === 'none' && (
+                <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                    <div className="bg-card p-6 rounded-2xl shadow-2xl max-w-sm w-full border border-border text-center">
+                        <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                            {incomingCall.callType === 'video' ? <Video className="w-8 h-8 text-primary" /> : <Phone className="w-8 h-8 text-primary" />}
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Incoming {incomingCall.callType === 'video' ? 'Video' : 'Audio'} Call</h3>
+                        <p className="text-muted-foreground mb-6">{incomingCall.callerName} is calling...</p>
+                        <div className="flex gap-4 justify-center">
+                            <button 
+                                onClick={() => {
+                                    socket.emit("reject-call", { roomId: groupId });
+                                    setIncomingCall(null);
+                                }}
+                                className="px-6 py-2 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+                            >
+                                Decline
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setActiveCallType(incomingCall.callType);
+                                    setIncomingCall(null);
+                                }}
+                                className="px-6 py-2 rounded-full bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
+                            >
+                                Accept
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Call Active */}
+            {activeCallType !== 'none' && (
+                <VideoCall 
+                    socket={socket} 
+                    groupId={groupId} 
+                    currentUserId={currentUserId} 
+                    currentUserName={currentUserName}
+                    callType={activeCallType}
+                    onEndCall={() => {
+                        setActiveCallType('none');
+                    }} 
+                />
+            )}
 
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Main Chat Area */}

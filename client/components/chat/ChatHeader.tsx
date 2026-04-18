@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Users, MoreVertical, Video, Phone } from 'lucide-react';
 import { ChatGroupType } from '@/types';
 import UserAvatar from './UserAvatar';
 
@@ -9,9 +9,10 @@ interface ChatHeaderProps {
     onlineUsersCount: number;
     onSidebarToggle: () => void;
     showSidebar: boolean;
+    onStartCall?: (type: 'audio' | 'video') => void;
 }
 
-export default function ChatHeader({ group, onlineUsersCount, onSidebarToggle, showSidebar }: ChatHeaderProps) {
+export default function ChatHeader({ group, onlineUsersCount, onSidebarToggle, showSidebar, onStartCall }: ChatHeaderProps) {
     return (
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-20 sticky top-0 transition-all duration-300">
             <div className="flex items-center gap-3">
@@ -40,6 +41,24 @@ export default function ChatHeader({ group, onlineUsersCount, onSidebarToggle, s
             </div>
 
             <div className="flex items-center gap-1">
+                {onStartCall && (
+                    <>
+                        <button 
+                            onClick={() => onStartCall('audio')} 
+                            className="p-2 mr-1 rounded-full transition-all active:scale-95 hover:bg-primary/10 text-primary hover:text-primary/80"
+                            title="Start Audio Call"
+                        >
+                            <Phone className="w-5 h-5" />
+                        </button>
+                        <button 
+                            onClick={() => onStartCall('video')} 
+                            className="p-2 mr-1 rounded-full transition-all active:scale-95 hover:bg-primary/10 text-primary hover:text-primary/80"
+                            title="Start Video Call"
+                        >
+                            <Video className="w-5 h-5" />
+                        </button>
+                    </>
+                )}
                 <button 
                     onClick={onSidebarToggle} 
                     className={`p-2 rounded-full transition-all active:scale-95 ${showSidebar ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
