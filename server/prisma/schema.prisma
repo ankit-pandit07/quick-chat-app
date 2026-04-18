@@ -22,6 +22,7 @@ model User {
   oauth_id        String
   created_at      DateTime    @default(now())
   ChatGroup       ChatGroup[]
+  Message         Message[]
 }
 
 model ChatGroup {
@@ -32,6 +33,7 @@ model ChatGroup {
   passcode        String
   created_at      DateTime   @default(now())
   GroupUsers      GroupUsers[]
+  Message         Message[]
 
   @@index([created_at])
   @@map("chat_groups")
@@ -41,6 +43,24 @@ model GroupUsers {
   id              Int       @id @default(autoincrement())
   group           ChatGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
   group_id        String
+  name            String
   created_at      DateTime  @default(now())
 }     
     
+model Message {
+  id              String    @id @default(uuid())
+  chat_group      ChatGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group_id        String
+  sender          User?     @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+  sender_id       Int?
+  sender_name     String?
+  content         String
+  file_url        String?
+  is_edited       Boolean   @default(false)
+  is_deleted      Boolean   @default(false)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@index([created_at])
+  @@map("messages")
+}

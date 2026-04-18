@@ -8,7 +8,7 @@ import { createAdapter } from "@socket.io/redis-streams-adapter"
 import { setupSocket } from "./socket.js"
 import redis from "./config/redis.config.js"
 import { instrument } from "@socket.io/admin-ui"
-
+import path from "path"
 
 const app:Application=express()
 const server=createServer(app)
@@ -17,7 +17,7 @@ const io=new Server(server,{
         origin:["http://localhost:3000","https://admin.socket.io"],
         credentials:true
     },
-    adapter:createAdapter(redis)
+    // adapter:createAdapter(redis) // Disabled because local Redis is throwing ECONNREFUSED and breaking broadcasts
 })
 
 
@@ -38,6 +38,9 @@ app.use(express.json())
 app.use(express.urlencoded({
     extended:false
 }))
+
+// Serve static files
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")))
 
 //Routes
 app.use("/api",Routes)

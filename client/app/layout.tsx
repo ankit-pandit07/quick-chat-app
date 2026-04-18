@@ -30,8 +30,8 @@ export default function RootLayout({
           )}
         >
           <Toaster richColors duration={10000}/>
-        {children}
-      </body>
+          {children}
+        </body>
       </SessionProvider>
     </html>
   );
